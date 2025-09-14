@@ -27,16 +27,17 @@
       .row-actions { display:flex; gap: 0.75rem; align-items:center; }
       .gap { display:flex; gap: 0.5rem; }
     </style>
-    <!-- React 18 + ReactDOM 18 + Babel (for in-browser JSX) -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- React 18 + ReactDOM 18 (production) + Babel for in-browser JSX -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   </head>
   <body>
     <div class="container">
       <div id="root"></div>
     </div>
-    <script type="text/babel">
+    <!-- IMPORTANT: presets so JSX & modern syntax compile on GH Pages -->
+    <script type="text/babel" data-presets="env,react">
       const { useEffect, useState } = React;
 
       // Helpers
@@ -71,7 +72,7 @@
           localStorage.setItem(LS_KEY, JSON.stringify(rows));
         }, [rows]);
 
-        // Dev assertions
+        // Dev assertions (non-destructive)
         useEffect(() => {
           try {
             console.assert(isValidDateStr("2025-09-14"), "Date validator should accept YYYY-MM-DD");
@@ -134,9 +135,9 @@
               <table>
                 <thead>
                   <tr>
-                    <th style="width:50%;">Paper · PDF</th>
-                    <th style="width:25%;">My Slides</th>
-                    <th style="width:25%;">Date Read</th>
+                    <th style={{ width: "50%" }}>Paper · PDF</th>
+                    <th style={{ width: "25%" }}>My Slides</th>
+                    <th style={{ width: "25%" }}>Date Read</th>
                   </tr>
                 </thead>
                 <tbody>
