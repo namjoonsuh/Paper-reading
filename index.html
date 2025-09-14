@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Paper Log (Simple)</title>
+    <!-- Minimal styling -->
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#fff; color:#0f172a; }
+      .container { max-width: 64rem; margin: 0 auto; padding: 1rem; }
+      .border { border: 1px solid #e5e7eb; }
+      .rounded { border-radius: 0.75rem; }
+      .pad { padding: 0.75rem; }
+      .grid { display: grid; gap: 0.5rem; }
+      @media (min-width: 768px) { .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+      .input { border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.9rem; }
+      .btn { padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 0.9rem; }
+      .btn-primary { background:#0f172a; color:white; border: none; }
+      .btn-outline { background:white; border:1px solid #cbd5e1; }
+      table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+      th, td { text-align: left; padding: 0.75rem; vertical-align: top; }
+      thead { background:#f8fafc; }
+      tr + tr { border-top: 1px solid #e5e7eb; }
+      a { color: #1d4ed8; }
+      .muted { color: #64748b; }
+      .error { color: #dc2626; font-size: 0.8rem; margin-top: 0.3rem; }
+      .row-actions { display:flex; gap: 0.75rem; align-items:center; }
+      .gap { display:flex; gap: 0.5rem; }
+    </style>
+    <!-- React 18 + ReactDOM 18 + Babel (for in-browser JSX) -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div id="root"></div>
+    </div>
+    <script type="text/babel">
+      const { useEffect, useState } = React;
+
+      // Helpers
+      const uid = () => (crypto?.randomUUID?.() || "id_" + Math.random().toString(36).slice(2));
+      const isValidDateStr = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+      const isLikelyUrl = (s) => { if (!s) return false; try { new URL(s); return true; } catch { return false; } };
+
+      const LS_KEY = "paper_table_simple_v01";
+      const seed = [
+        { id: uid(), title: "Denoising Diffusion Probabilistic Models", pdfUrl: "https://arxiv.org/pdf/2006.11239", slidesUrl: "", readDate: "2023-05-20" },
+        { id: uid(), title: "RAG: Retrieval-Augmented Generation for Knowledge-Intensive NLP", pdfUrl: "https://arxiv.org/pdf/2005.11401", slidesUrl: "", readDate: "2024-02-11" }
+      ];
+
+      function PaperTableSimple() {
+        const [rows, setRows] = useState([]);
+        const [title, setTitle] = useState("");
+        const [pdfUrl, setPdfUrl] = useState("");
+        const [slidesUrl, setSlidesUrl] = useState("");
+        const [readDate, setReadDate] = useState(new Date().toISOString().slice(0,10));
+        const [err, setErr] = useState("");
+        const [editingId, setEditingId] = useState(null);
+
+        useEffect(() => {
+          const saved = localStorage.getItem(LS_KEY);
+          if (saved) {
+            try { setRows(JSON.parse(saved)); return; } catch {}
+          }
+          setRows(seed);
+        }, []);
+
+        useEffect(() => {
+          localStorage.setItem(LS_KEY, JSON.stringify(rows));
+        }, [rows]);
+
+        // Dev assertions
+        useEffect(() => {
+          try {
+            console.assert(isValidDateStr("2025-09-14"), "Date validator should accept YYYY-MM-DD");
+            console.assert(!isValidDateStr("2025/09/14"), "Date validator should reject slashed dates");
+            const a = uid(), b = uid();
+            console.assert(a !== b, "uid() should be unique-ish");
+            console.assert(isLikelyUrl("https://example.com"));
+            console.assert(!isLikelyUrl("not a url"));
+          } catch(e) {
+            console.warn("Dev tests error:", e);
+          }
+        }, []);
+
+        function addRow() {
+          const name = title.trim();
+          if (!name) { setErr("Paper title is required."); return; }
+          setErr("");
+
+          const newRow = { id: editingId ?? uid(), title: name, pdfUrl: pdfUrl.trim(), slidesUrl: slidesUrl.trim(), readDate };
+          setRows(prev => {
+            if (editingId) return prev.map(r => r.id === editingId ? newRow : r);
+            return [newRow, ...prev];
+          });
+
+          // reset form
+          setTitle(""); setPdfUrl(""); setSlidesUrl(""); setReadDate(new Date().toISOString().slice(0,10)); setEditingId(null);
+        }
+
+        function removeRow(id) { setRows(prev => prev.filter(r => r.id !== id)); }
+        function startEdit(r) {
+          setTitle(r.title);
+          setPdfUrl(r.pdfUrl || "");
+          setSlidesUrl(r.slidesUrl || "");
+          setReadDate(r.readDate || new Date().toISOString().slice(0,10));
+          setEditingId(r.id);
+          window.scrollTo?.({ top: 0, behavior: "smooth" });
+        }
+        function handleKey(e) { if (e.key === "Enter") { e.preventDefault(); addRow(); } }
+
+        return (
+          <div>
+            <div style={{paddingTop: "1.5rem", paddingBottom: "1rem"}}>
+              <h1 style={{fontSize:"1.5rem", fontWeight:600}}>📚 Paper Log (Simple)</h1>
+              <p className="muted" style={{marginTop:"0.25rem"}}>A minimal 3-column table. Stored locally (LocalStorage).</p>
+            </div>
+
+            <div className="grid grid-4" style={{marginBottom:"1rem"}}>
+              <input className="input" placeholder="Paper title" value={title} onChange={e=>setTitle(e.target.value)} onKeyDown={handleKey} />
+              <input className="input" placeholder="PDF URL (https://...)" value={pdfUrl} onChange={e=>setPdfUrl(e.target.value)} onKeyDown={handleKey} />
+              <input className="input" placeholder="Google Slides URL (optional)" value={slidesUrl} onChange={e=>setSlidesUrl(e.target.value)} onKeyDown={handleKey} />
+              <div className="gap">
+                <input className="input" type="date" value={readDate} onChange={e=>setReadDate(e.target.value)} />
+                <button className="btn btn-primary" type="button" onClick={addRow}>{editingId ? "Save" : "Add"}</button>
+                {editingId && <button className="btn btn-outline" type="button" onClick={() => { setEditingId(null); setTitle(""); setPdfUrl(""); setSlidesUrl(""); setReadDate(new Date().toISOString().slice(0,10)); }}>Cancel</button>}
+              </div>
+            </div>
+            {err && <div className="error">{err}</div>}
+
+            <div className="border rounded">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:50%;">Paper · PDF</th>
+                    <th style="width:25%;">My Slides</th>
+                    <th style="width:25%;">Date Read</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.length === 0 ? (
+                    <tr><td colSpan="3" className="pad muted" style={{textAlign:"center"}}>No entries yet. Use the form above to add one.</td></tr>
+                  ) : rows.map(r => (
+                    <tr key={r.id}>
+                      <td className="pad">
+                        <div style={{fontWeight:500}}>{r.title}</div>
+                        {r.pdfUrl ? <a className="muted" href={r.pdfUrl} target="_blank" rel="noreferrer">PDF</a> : <span className="muted">(no PDF link)</span>}
+                      </td>
+                      <td className="pad">
+                        {r.slidesUrl ? <a href={r.slidesUrl} target="_blank" rel="noreferrer">Slides</a> : <span className="muted">—</span>}
+                      </td>
+                      <td className="pad">
+                        <div className="row-actions">
+                          <span>{r.readDate || ""}</span>
+                          <button className="btn btn-outline" onClick={() => startEdit(r)}>Edit</button>
+                          <button className="btn btn-outline" style={{color:"#dc2626", borderColor:"#dc2626"}} onClick={() => removeRow(r.id)}>Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="muted" style={{marginTop:"0.5rem"}}>{rows.length} items</div>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<PaperTableSimple />);
+    </script>
+  </body>
+</html>
